@@ -8,7 +8,6 @@ from bilateral_overlap import find_bilateral_overlap
 # Class to store parameter values
 class Params:
     def __init__(self):
-        # Set the paths to input feature classes and workspace
         self.moria_buildings = r'C:\Users\amitv\Desktop\TONOA\bordered_data.gdb\B_BUILDINGS_A'
         self.bs_buildings = r'C:\Users\amitv\Desktop\TONOA\bordered_data.gdb\no_dupes_leb_new_new'
         self.workspace_source = r'C:\Users\amitv\Desktop\TONOA\workspace.gdb'
@@ -18,9 +17,10 @@ class Params:
 # Abstract base class for finding features
 class FindFeatures(Params):
     def __init__(self):
-        super().__init()
+        super().__init__()
         self.fc_name = None
         self.selection = None
+
         # Create feature layers for the input feature classes
         self.bs_buildings_layer = arcpy.MakeFeatureLayer_management(self.bs_buildings, "bs_buildings_lyr")
         self.moria_buildings_layer = arcpy.MakeFeatureLayer_management(self.moria_buildings, "moria_buildings_lyr")
@@ -42,7 +42,7 @@ class FindFeatures(Params):
 # Class for finding renewing features
 class FindRenewingFeatures(FindFeatures, ABC):
     def __init__(self):
-        super().__init()
+        super().__init__()
         self.fc_name = 'renewing_features'
 
     def find_features(self):
@@ -55,12 +55,11 @@ class FindRenewingFeatures(FindFeatures, ABC):
 # Class for finding features with overlap percentage
 class FindFeaturesWithOverlapPercentage(FindFeatures, ABC):
     def __init__(self, bilateral_overlap):
-        super().__init()
+        super().__init__()
         self.query = None
         self.bilateral_overlap = bilateral_overlap
         # Create a feature layer for bilateral overlap data
-        self.bilateral_overlap_layer = arcpy.MakeFeatureLayer_management(self.bilateral_overlap,
-                                                                         "bilateral_overlap_lyr")
+        self.bilateral_overlap_layer = arcpy.MakeFeatureLayer_management(self.bilateral_overlap, "bilateral_overlap_lyr")
 
     def find_features(self):
         arcpy.env.overwriteOutput = True
@@ -93,7 +92,7 @@ class FindDeletingFeatures(FindFeaturesWithOverlapPercentage, ABC):
         self.query = "PERCENTAGE_1 <= 10 And PERCENTAGE_2 <= 10"
 
 
-if __name__ == '__main':
+if __name__ == '__main__':
     params = Params()
 
     # Find bilateral overlap features by calling the `find_bilateral_overlap` function
