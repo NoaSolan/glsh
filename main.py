@@ -1,49 +1,84 @@
 import abc
 from abc import ABC
-
 import arcpy
 
+from bilateral_overlap import find_bilateral_overlap
 
-class CreateTheLayers:
+
+class Params:
     def __init__(self):
         self.moria_buildings = r'C:\Users\amitv\Desktop\TONOA\bordered_data.gdb\B_BUILDINGS_A'
         self.bs_buildings = r'C:\Users\amitv\Desktop\TONOA\bordered_data.gdb\no_dupes_leb_new_new'
         self.workspace_source = r'C:\Users\amitv\Desktop\TONOA\workspace.gdb'
         self.target_source = r'C:\Users\amitv\Desktop\TONOA\target.gdb'
 
+
+class FindFeatures(Params):
+    def __init__(self):
+        super().__init__()
+        self.fc_name = None
+        self.selection = None
+        self.bs_buildings_layer = arcpy.MakeFeatureLayer_management(self.bs_buildings, "bs_buildings_lyr")
+        self.moria_buildings_layer = arcpy.MakeFeatureLayer_management(self.moria_buildings, "moria_buildings_lyr")
+
     @abc.abstractmethod
     def find_features(self):
         pass
 
-    @abc.abstractmethod
     def create_feature_class(self):
-        pass
+        match_count = int(arcpy.management.GetCount(self.selection)[0])
+        if not match_count:
+            print(f'There aren\'t any {self.fc_name}')
+        else:
+            arcpy.FeatureClassToFeatureClass_conversion(self.bs_buildings_layer,
+                                                        self.target_source, self.fc_name)
 
 
-class FindRenewingFeatures(CreateTheLayers, ABC):
+class FindRenewingFeatures(FindFeatures, ABC):
     def __init__(self):
         super().__init__()
-        self.selection = None
-        self.bs_buildings_layer = arcpy.MakeFeatureLayer_management(self.bs_buildings, "bs_buildings_lyr")
-        self.moria_buildings_layer = arcpy.MakeFeatureLayer_management(self.moria_buildings, "moria_buildings_lyr")
+        self.fc_name = 'renewing_features'
 
     def find_features(self):
         self.selection = arcpy.management.SelectLayerByLocation(self.bs_buildings_layer, "INTERSECT",
                                                                 self.moria_buildings_layer, None, "NEW_SELECTION",
                                                                 "INVERT")
 
-    def create_feature_class(self):
-        match_count = int(arcpy.management.GetCount(self.selection)[0])
-        if not match_count:
-            print('There aren\'t any renewing features')
-        else:
-            arcpy.FeatureClassToFeatureClass_conversion(self.bs_buildings_layer,
-                                                        self.target_source, "renewing_buildings")
+
+class FindFeaturesWithOverlapPercentage(FindFeatures, ABC):
+    def __init__(self, bilateral_overlap):
+        super().__init__()
+        self.query = None
+        self.bilateral_overlap = bilateral_overlap
+        self.bilateral_overlap_layer = arcpy.MakeFeatureLayer_management(self.bs_buildings, "bilateral_overlap_lyr")
+
+    def find_features(self):
+        selection = arcpy.management.SelectLayerByAttribute(self.bilateral_overlap, "NEW_SELECTION", self.query)
+        match_count = int(arcpy.management.GetCount(selection)[0])
+        if match_count:
+            self.selection = arcpy.management.SelectLayerByLocation(self.bs_buildings_layer,
+                                                                    "INTERSECT", self.bilateral_overlap_layer)
 
 
+class FindReplacingFeatures(FindFeaturesWithOverlapPercentage, ABC):
+    def __init__(self, bilateral_overlap):
+        super().__init__(bilateral_overlap)
+        self.fc_name = 'replacing_features'
+        self.query = "PERCENTAGE_1 >= 70 And PERCENTAGE_2 >= 70"
+
+
+class FindDeletingFeatures(FindFeaturesWithOverlapPercentage, ABC):
+    def __init__(self, bilateral_overlap):
+        super().__init__(bilateral_overlap)
+        self.fc_name = 'deleting_features'
+        self.query = "PERCENTAGE_1 <= 10 And PERCENTAGE_2 <= 10"
 
 
 if __name__ == '__main__':
+    params = Params()
+    bilateral_overlap = find_bilateral_overlap(params.moria_buildings,
+                                               params.bs_buildings, params.workspace_source)
+
     renewing_features = FindRenewingFeatures()
     renewing_features.find_features()
     renewing_features.create_feature_class()
