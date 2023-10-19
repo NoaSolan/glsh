@@ -58,8 +58,11 @@ class FindFeaturesWithOverlapPercentage(FindFeatures, ABC):
         selection = arcpy.management.SelectLayerByAttribute(self.bilateral_overlap_layer, "NEW_SELECTION", self.query)
         match_count = int(arcpy.management.GetCount(selection)[0])
         if match_count:
+            selection_layer = arcpy.FeatureClassToFeatureClass_conversion(self.bilateral_overlap_layer,
+                                                                          self.workspace_source,
+                                                                          'bilateral_overlap_selection_lyr')
             self.selection = arcpy.management.SelectLayerByLocation(self.bs_buildings_layer,
-                                                                    "INTERSECT", self.bilateral_overlap_layer)
+                                                                    "INTERSECT", selection_layer)
 
 
 class FindReplacingFeatures(FindFeaturesWithOverlapPercentage, ABC):
