@@ -50,10 +50,12 @@ class FindFeaturesWithOverlapPercentage(FindFeatures, ABC):
         super().__init__()
         self.query = None
         self.bilateral_overlap = bilateral_overlap
-        self.bilateral_overlap_layer = arcpy.MakeFeatureLayer_management(self.bs_buildings, "bilateral_overlap_lyr")
+        self.bilateral_overlap_layer = arcpy.MakeFeatureLayer_management(self.bilateral_overlap, "bilateral_overlap_lyr")
 
     def find_features(self):
-        selection = arcpy.management.SelectLayerByAttribute(self.bilateral_overlap, "NEW_SELECTION", self.query)
+        arcpy.env.overwriteOutput = True
+
+        selection = arcpy.management.SelectLayerByAttribute(self.bilateral_overlap_layer, "NEW_SELECTION", self.query)
         match_count = int(arcpy.management.GetCount(selection)[0])
         if match_count:
             self.selection = arcpy.management.SelectLayerByLocation(self.bs_buildings_layer,
@@ -78,7 +80,17 @@ if __name__ == '__main__':
     params = Params()
     bilateral_overlap = find_bilateral_overlap(params.moria_buildings,
                                                params.bs_buildings, params.workspace_source)
-
+    # Renewing features
     renewing_features = FindRenewingFeatures()
     renewing_features.find_features()
     renewing_features.create_feature_class()
+
+    # Replacing features
+    replacing_features = FindReplacingFeatures(bilateral_overlap)
+    replacing_features.find_features()
+    replacing_features.create_feature_class()
+
+    # Deleting features
+    deleting_features = FindDeletingFeatures(bilateral_overlap)
+    deleting_features.find_features()
+    deleting_features.create_feature_class()
